@@ -1,0 +1,77 @@
+#!/bin/bash
+# Configuration file to store the directory and Git repository
+config_file="$HOME/update_app_config.txt"
+
+# Read the saved configuration if it exists
+if [ -f "$config_file" ]; then
+  IFS="," read -r directory gitrepo < "$config_file"
+fi
+
+# Check if the required arguments are provided, or if they are not saved yet
+if [ $# -ne 2 ] && [ -z "$directory" ] || [ -z "$gitrepo" ]; then
+  echo "Usage: $0 <directory> <gitrepo>"
+  exit 1
+fi
+
+# Save the arguments if they are provided
+if [ $# -eq 2 ]; then
+  directory=$1
+  gitrepo=$2
+  echo "$directory,$gitrepo" > "$config_file"
+fi
+
+pidfile="nohup-java-pid.txt"
+
+# Kill the previously running Java process with nohup, if any
+function kill_previous_nohup_java() {
+  if [ -f "$pidfile" ]; then
+    prev_pid=$(cat "$pidfile")
+    if [ ! -z "$prev_pid" ] && kill -0 "$prev_pid" 2>/dev/null; then
+      echo "Killing previously running Java process with PID $prev_pid"
+      kill "$prev_pid"
+    else
+      echo "No previously running Java process found"
+    fi
+  else
+    echo "No previously running Java process found"
+  fi
+}
+
+# Remove the specified directory
+if [ -d "$directory" ]; then
+  echo "Removing $directory..."
+  rm -rf "$directory"
+else
+  echo "Directory $directory not found. Skipping removal."
+fi
+
+# Kill the previously running Java process
+kill_previous_nohup_java
+
+# Clone the specified Git repository
+echo "Cloning $gitrepo..."
+git clone "$gitrepo" || { echo "Error: Failed to clone $gitrepo"; exit 1; }
+repo_name=$(basename "$gitrepo" .git)
+
+# Change to the cloned repository directory
+cd "$repo_name" || { echo "Error: Failed to enter repository directory"; exit 1; }
+
+# Build the Maven project (package)
+echo "Building Maven project..."
+bash ./mvnw package || { echo "Error: Maven build failed"; exit 1; }
+
+# Find the generated JAR file
+jarfile=$(find target -iname '*SNAPSHOT.jar' -o -iname '.jar' | head -n 1)
+if [ -z "$jarfile" ]; then
+  echo "Error: JAR file not found"
+  exit 1
+fi
+
+# Run the Java JAR file with nohup
+echo "Running Java JAR file with nohup..."
+nohup java -jar "$jarfile" &>/dev/null &
+
+# Save the process ID
+echo $! > "nohup-java-pid.txt"
+
+echo "JAR file is running in the background with nohup. PID saved in nohup-java-pid.txt"

@@ -7,13 +7,13 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Download the OpenJDK package
-wget https://download.oracle.com/java/19/latest/jdk-19_linux-x64_bin.deb
+wget https://download.oracle.com/java/20/latest/jdk-20_linux-x64_bin.deb
 
 # Install the downloaded package
-sudo apt-get -qqy install ./jdk-19_linux-x64_bin.deb
+sudo apt-get -qqy install ./jdk-20_linux-x64_bin.deb
 
 # Update the Java alternatives
-sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-19/bin/java 1919
+sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-20/bin/java 1919
 
 # Clean up by removing the downloaded package
 rm ./jdk-19_linux-x64_bin.deb

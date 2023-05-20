@@ -1,24 +1,30 @@
 #!/bin/bash
-# Configuration file to store the directory and Git repository
+# Configuration file to store the Git repository
 config_file="$HOME/update_app_config.txt"
+
+# Your Github username and access token
+username="YOUR_USERNAME"
+access_token="YOUR_ACCESS_TOKEN"
 
 # Read the saved configuration if it exists
 if [ -f "$config_file" ]; then
-  IFS="," read -r directory gitrepo < "$config_file"
+  gitrepo=$(cat "$config_file")
 fi
 
 # Check if the required arguments are provided, or if they are not saved yet
-if [ $# -ne 2 ] && [ -z "$directory" ] || [ -z "$gitrepo" ]; then
-  echo "Usage: $0 <directory> <gitrepo>"
+if [ $# -ne 1 ] && [ -z "$gitrepo" ]; then
+  echo "Usage: $0 <gitrepo>"
   exit 1
 fi
 
 # Save the arguments if they are provided
-if [ $# -eq 2 ]; then
-  directory=$1
-  gitrepo=$2
-  echo "$directory,$gitrepo" > "$config_file"
+if [ $# -eq 1 ]; then
+  gitrepo=$1
+  echo "$gitrepo" > "$config_file"
 fi
+
+# Append the username and access token to the Git repository URL
+gitrepo="https://${username}:${access_token}@${gitrepo#https://}"
 
 pidfile="nohup-java-pid.txt"
 
@@ -29,13 +35,18 @@ function kill_previous_nohup_java() {
     if [ ! -z "$prev_pid" ] && kill -0 "$prev_pid" 2>/dev/null; then
       echo "Killing previously running Java process with PID $prev_pid"
       kill "$prev_pid"
+      while kill -0 "$prev_pid" 2> /dev/null; do sleep 1; done  # Wait for the process to be stopped
     else
       echo "No previously running Java process found"
     fi
+    rm "$pidfile"  # Remove the pid file after the process is stopped
   else
     echo "No previously running Java process found"
   fi
 }
+
+# Get the repository name from the gitrepo URL
+directory=$(basename "$gitrepo" .git)
 
 # Remove the specified directory
 if [ -d "$directory" ]; then
@@ -51,10 +62,9 @@ kill_previous_nohup_java
 # Clone the specified Git repository
 echo "Cloning $gitrepo..."
 git clone "$gitrepo" || { echo "Error: Failed to clone $gitrepo"; exit 1; }
-repo_name=$(basename "$gitrepo" .git)
 
 # Change to the cloned repository directory
-cd "$repo_name" || { echo "Error: Failed to enter repository directory"; exit 1; }
+cd "$directory" || { echo "Error: Failed to enter repository directory"; exit 1; }
 
 # Build the Maven project (package)
 echo "Building Maven project..."
@@ -74,4 +84,4 @@ nohup java -jar "$jarfile" &>/dev/null &
 # Save the process ID
 echo $! > "nohup-java-pid.txt"
 
-echo "JAR file is running in the background with nohup. PID saved in nohup-java-pid.txt"
+echo "Java application has been updated and is running with PID $!"

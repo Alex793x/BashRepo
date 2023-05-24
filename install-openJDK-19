@@ -16,7 +16,7 @@ sudo apt-get -qqy install ./jdk-20_linux-x64_bin.deb
 sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-20/bin/java 1919
 
 # Clean up by removing the downloaded package
-rm ./jdk-19_linux-x64_bin.deb
+rm ./jdk-20_linux-x64_bin.deb
 
 echo "OpenJDK's installation completed successfully."
 

@@ -30,19 +30,7 @@ pidfile="nohup-java-pid.txt"
 
 # Kill the previously running Java process with nohup, if any
 function kill_previous_nohup_java() {
-  if [ -f "$pidfile" ]; then
-    prev_pid=$(cat "$pidfile")
-    if [ ! -z "$prev_pid" ] && kill -0 "$prev_pid" 2>/dev/null; then
-      echo "Killing previously running Java process with PID $prev_pid"
-      kill "$prev_pid"
-      while kill -0 "$prev_pid" 2> /dev/null; do sleep 1; done  # Wait for the process to be stopped
-    else
-      echo "No previously running Java process found"
-    fi
-    rm "$pidfile"  # Remove the pid file after the process is stopped
-  else
-    echo "No previously running Java process found"
-  fi
+  pkill -9 java
 }
 
 # Get the repository name from the gitrepo URL

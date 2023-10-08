@@ -1,8 +1,10 @@
 #!/bin/bash
+
 # Configuration file to store the Git repository
 config_file="$HOME/update_app_config.txt"
 
 # Your Github username and access token
+# Note: Consider moving these to a more secure location
 username="YOUR_USERNAME"
 access_token="YOUR_ACCESS_TOKEN"
 
@@ -29,9 +31,13 @@ gitrepo="https://${username}:${access_token}@${gitrepo#https://}"
 pidfile="nohup-java-pid.txt"
 
 # Kill the previously running Java process with nohup, if any
-function kill_previous_nohup_java() {
-  pkill -9 java
-}
+if [ -f "$pidfile" ]; then
+    old_pid=$(cat "$pidfile")
+    if ps -p $old_pid > /dev/null; then
+        kill -9 $old_pid
+    fi
+    rm "$pidfile"
+fi
 
 # Get the repository name from the gitrepo URL
 directory=$(basename "$gitrepo" .git)
@@ -43,9 +49,6 @@ if [ -d "$directory" ]; then
 else
   echo "Directory $directory not found. Skipping removal."
 fi
-
-# Kill the previously running Java process
-kill_previous_nohup_java
 
 # Clone the specified Git repository
 echo "Cloning $gitrepo..."
@@ -59,7 +62,7 @@ echo "Building Maven project..."
 bash ./mvnw package || { echo "Error: Maven build failed"; exit 1; }
 
 # Find the generated JAR file
-jarfile=$(find target -iname '*SNAPSHOT.jar' -o -iname '.jar' | head -n 1)
+jarfile=$(find target -iname '*SNAPSHOT.jar' | head -n 1)
 if [ -z "$jarfile" ]; then
   echo "Error: JAR file not found"
   exit 1
@@ -70,6 +73,6 @@ echo "Running Java JAR file with nohup..."
 nohup java -jar "$jarfile" &>/dev/null &
 
 # Save the process ID
-echo $! > "nohup-java-pid.txt"
+echo $! > "$pidfile"
 
 echo "Java application has been updated and is running with PID $!"
